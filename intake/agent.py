@@ -51,6 +51,7 @@ class AgentDecisionOutput(BaseModel):
     low_confidence_fields: List[str] = Field(default_factory=list)
     overridden: bool = False
     trace_id: str
+    document_classifications: Dict[str, str] = Field(default_factory=dict)
 
 
 # In-memory trace store for retrieving via GET /v1/traces/{trace_id}
@@ -71,6 +72,9 @@ def run_agent(
     if provider is None:
         provider = FakeProvider()
 
+    if hasattr(provider, "reset"):
+        provider.reset()
+
     trace_id = f"trace_{uuid.uuid4().hex[:12]}"
     packet_id = packet.get("packet_id", "unknown_packet")
     start_total_time = time.perf_counter()
@@ -81,6 +85,7 @@ def run_agent(
 
     # State accumulated across tool executions
     extracted_form_fields: Dict[str, Any] = {}
+    extracted_doc_classifications: Dict[str, str] = {}
     latest_completeness_res: Optional[Dict[str, Any]] = None
     step_count = 0
     model_decision: Optional[str] = None
@@ -119,7 +124,14 @@ def run_agent(
 
             # Record step in trace
             summary = f"Executed {tool_name} successfully."
-            if tool_name == "extract_fields":
+            if tool_name == "classify_document":
+                if tool_result.get("classifications"):
+                    for sc in tool_result["classifications"]:
+                        extracted_doc_classifications[sc["doc_id"]] = sc["doc_type"]
+                elif tool_result.get("doc_id") and tool_result.get("doc_type"):
+                    extracted_doc_classifications[tool_result["doc_id"]] = tool_result["doc_type"]
+                summary = f"Classified {len(extracted_doc_classifications)} documents."
+            elif tool_name == "extract_fields":
                 if tool_result.get("fields"):
                     extracted_form_fields = tool_result.get("fields", {})
                 summary = f"Extracted form fields: {list(extracted_form_fields.keys())}"
@@ -230,5 +242,6 @@ def run_agent(
         fields=flattened_fields,
         low_confidence_fields=low_confidence_fields,
         overridden=overridden,
-        trace_id=trace_id
+        trace_id=trace_id,
+        document_classifications=extracted_doc_classifications
     )

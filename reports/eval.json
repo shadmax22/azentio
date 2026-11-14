@@ -1,0 +1,103 @@
+{
+  "decision_accuracy": 1.0,
+  "confusion_matrix": {
+    "COMPLETE": {
+      "COMPLETE": 18,
+      "REQUEST_DOCUMENTS": 0,
+      "HUMAN_REVIEW": 0
+    },
+    "REQUEST_DOCUMENTS": {
+      "COMPLETE": 0,
+      "REQUEST_DOCUMENTS": 16,
+      "HUMAN_REVIEW": 0
+    },
+    "HUMAN_REVIEW": {
+      "COMPLETE": 0,
+      "REQUEST_DOCUMENTS": 0,
+      "HUMAN_REVIEW": 6
+    }
+  },
+  "request_prf": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "tp": 16,
+    "fp": 0,
+    "fn": 0
+  },
+  "doc_type_accuracy": 1.0,
+  "field_accuracy": {
+    "overall": 0.9958,
+    "by_field": {
+      "applicant_name": 1.0,
+      "product": 1.0,
+      "employment_type": 1.0,
+      "loan_amount": 1.0,
+      "tenure_months": 0.975,
+      "application_date": 1.0
+    }
+  },
+  "false_complete_rate": 0.0,
+  "review_rate": 0.15,
+  "steps": {
+    "mean": 4.0,
+    "max": 4
+  },
+  "overrides": 3,
+  "threshold_sweep": [
+    {
+      "threshold": 0.5,
+      "review_rate": 0.15,
+      "false_complete_rate": 0.0,
+      "decision_accuracy": 1.0,
+      "overrides": 3
+    },
+    {
+      "threshold": 0.6,
+      "review_rate": 0.15,
+      "false_complete_rate": 0.0,
+      "decision_accuracy": 1.0,
+      "overrides": 3
+    },
+    {
+      "threshold": 0.7,
+      "review_rate": 0.15,
+      "false_complete_rate": 0.0,
+      "decision_accuracy": 1.0,
+      "overrides": 3
+    },
+    {
+      "threshold": 0.8,
+      "review_rate": 0.15,
+      "false_complete_rate": 0.0,
+      "decision_accuracy": 1.0,
+      "overrides": 3
+    },
+    {
+      "threshold": 0.9,
+      "review_rate": 0.15,
+      "false_complete_rate": 0.0,
+      "decision_accuracy": 1.0,
+      "overrides": 3
+    }
+  ],
+  "recommended_threshold": 0.5,
+  "fault_run": {
+    "clean": {
+      "decision_accuracy": 1.0,
+      "false_complete_rate": 0.0,
+      "mean_steps": 4.0,
+      "max_steps": 4,
+      "overrides": 3,
+      "request_f1": 1.0
+    },
+    "fault_0.2": {
+      "decision_accuracy": 1.0,
+      "false_complete_rate": 0.0,
+      "mean_steps": 5.42,
+      "max_steps": 8,
+      "overrides": 3,
+      "request_f1": 1.0
+    }
+  }
+}

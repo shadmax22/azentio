@@ -1,0 +1,7 @@
+{
+  "decision_accuracy_min": 0.95,
+  "false_complete_rate_max": 0.0,
+  "request_f1_min": 0.95,
+  "doc_type_accuracy_min": 0.95,
+  "field_accuracy_min": 0.95
+}
