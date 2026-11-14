@@ -75,13 +75,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const cancelModalBtn = document.getElementById("cancelModalBtn");
   const submitResolveBtn = document.getElementById("submitResolveBtn");
   const modalPacketId = document.getElementById("modalPacketId");
+  const modalStatusBadge = document.getElementById("modalStatusBadge");
   const modalFieldsContainer = document.getElementById("modalFieldsContainer");
+  const modalAppFieldsGrid = document.getElementById("modalAppFieldsGrid");
+  const modalFormText = document.getElementById("modalFormText");
+  const modalDocCount = document.getElementById("modalDocCount");
+  const modalDocTabs = document.getElementById("modalDocTabs");
+  const modalDocViewer = document.getElementById("modalDocViewer");
+  const modalUiView = document.getElementById("modalUiView");
+  const modalJsonView = document.getElementById("modalJsonView");
+  const modalRawJsonViewer = document.getElementById("modalRawJsonViewer");
+  const toggleViewBtn = document.getElementById("toggleViewBtn");
+
   const reviewerNameInput = document.getElementById("reviewerNameInput");
   const reviewerDecisionSelect = document.getElementById("reviewerDecisionSelect");
   const reviewerNotesInput = document.getElementById("reviewerNotesInput");
   const modalErrorMsg = document.getElementById("modalErrorMsg");
 
   let currentActiveReviewItem = null;
+  let isJsonViewActive = false;
 
   // Initialize Packets Dropdown & Open Count
   fetchPackets();
@@ -332,25 +344,138 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshQueueBtn.addEventListener("click", fetchReviewQueue);
   reviewStatusFilter.addEventListener("change", fetchReviewQueue);
 
+  // Toggle between Proper UI view and Raw JSON view
+  if (toggleViewBtn) {
+    toggleViewBtn.addEventListener("click", () => {
+      isJsonViewActive = !isJsonViewActive;
+      if (isJsonViewActive) {
+        modalUiView.style.display = "none";
+        modalJsonView.style.display = "block";
+        toggleViewBtn.textContent = "📋 Switch to Form UI";
+      } else {
+        modalUiView.style.display = "grid";
+        modalJsonView.style.display = "none";
+        toggleViewBtn.textContent = "Toggle Raw JSON";
+      }
+    });
+  }
+
+  function parseFormFieldsFromText(text) {
+    const fields = {};
+    if (!text) return fields;
+    const lines = text.split("\n");
+    for (const line of lines) {
+      if (line.includes("Applicant Full Name:") || line.includes("Applicant Name:")) {
+        const val = line.split(":")[1]?.trim();
+        if (val && !val.includes("[Illegible") && !val.includes("[Smudge")) {
+          fields["applicant_name"] = val;
+        }
+      } else if (line.includes("Loan Product Applied For:") || line.includes("Product:")) {
+        fields["product"] = line.split(":")[1]?.trim();
+      } else if (line.includes("Employment Category:") || line.includes("Employment:")) {
+        fields["employment_type"] = line.split(":")[1]?.trim();
+      } else if (line.includes("Requested Loan Amount:") || line.includes("Loan Amount:")) {
+        const val = line.split(":")[1]?.trim();
+        if (val && !val.includes("[Illegible") && !val.includes("[Smudge")) {
+          fields["loan_amount"] = val;
+        }
+      } else if (line.includes("Repayment Tenure") || line.includes("Tenure:")) {
+        const val = line.split(":")[1]?.trim();
+        if (val && !val.includes("[Illegible") && !val.includes("[Smudge")) {
+          fields["tenure_months"] = val;
+        }
+      } else if (line.includes("Application Date:") || line.includes("Date:")) {
+        fields["application_date"] = line.split(":")[1]?.trim();
+      }
+    }
+    return fields;
+  }
+
   function openResolveModal(item) {
     currentActiveReviewItem = item;
     modalPacketId.textContent = item.packet_id;
     modalErrorMsg.style.display = "none";
     modalFieldsContainer.innerHTML = "";
+    modalAppFieldsGrid.innerHTML = "";
+    modalDocTabs.innerHTML = "";
+
+    // Reset view toggle
+    isJsonViewActive = false;
+    modalUiView.style.display = "grid";
+    modalJsonView.style.display = "none";
+    if (toggleViewBtn) toggleViewBtn.textContent = "Toggle Raw JSON";
+
+    // Set Status Badge
+    const isResolved = item.status === "resolved";
+    modalStatusBadge.textContent = isResolved ? `RESOLVED (${item.decision})` : "OPEN FOR REVIEW";
+    modalStatusBadge.className = `badge ${isResolved ? "badge-resolved" : "badge-open"}`;
 
     const lowConfFields = item.low_confidence_fields || [];
     const pktData = item.packet_data || {};
-    const appForm = pktData.application_form || "";
+    const appFormText = pktData.application_form || "No application form text available.";
+    const docs = pktData.documents || [];
 
+    // 1. Populate Raw JSON Viewer
+    modalRawJsonViewer.textContent = JSON.stringify(item, null, 2);
+
+    // 2. Parse & Display Clean Application Form Summary
+    const parsed = parseFormFieldsFromText(appFormText);
+    const summaryCards = [
+      { key: "Applicant Name", field: "applicant_name", val: parsed["applicant_name"] || "Illegible / Missing" },
+      { key: "Product", field: "product", val: parsed["product"] || "personal_loan" },
+      { key: "Employment", field: "employment_type", val: parsed["employment_type"] || "salaried" },
+      { key: "Loan Amount", field: "loan_amount", val: parsed["loan_amount"] || "Illegible / Missing" },
+      { key: "Tenure", field: "tenure_months", val: parsed["tenure_months"] ? `${parsed["tenure_months"]} Months` : "Illegible / Missing" },
+      { key: "Date", field: "application_date", val: parsed["application_date"] || pktData.as_of || "—" },
+    ];
+
+    summaryCards.forEach(c => {
+      const isFlagged = lowConfFields.includes(c.field);
+      const div = document.createElement("div");
+      div.className = "field-pill";
+      div.innerHTML = `
+        <span class="field-pill-label">${c.key}</span>
+        <span class="field-pill-val ${isFlagged ? 'flagged' : ''}">${c.val} ${isFlagged ? '⚠️' : ''}</span>
+      `;
+      modalAppFieldsGrid.appendChild(div);
+    });
+
+    // 3. Populate Application Form Text
+    modalFormText.textContent = appFormText;
+
+    // 4. Populate Supporting Documents Explorer
+    modalDocCount.textContent = docs.length;
+    if (docs.length === 0) {
+      modalDocViewer.textContent = "No supporting documents attached.";
+    } else {
+      docs.forEach((doc, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `doc-tab-btn ${idx === 0 ? 'active' : ''}`;
+        btn.textContent = `${doc.doc_id}: ${doc.filename || 'doc'}`;
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".doc-tab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          modalDocViewer.textContent = doc.text || "(Empty document text)";
+        });
+        modalDocTabs.appendChild(btn);
+      });
+      // Show first document by default
+      modalDocViewer.textContent = docs[0].text || "(Empty document text)";
+    }
+
+    // 5. Populate Low-Confidence Fields Input Section
     if (lowConfFields.length === 0) {
-      modalFieldsContainer.innerHTML = "<p class='modal-desc'>No specific low confidence fields flagged. You may verify and submit resolution.</p>";
+      modalFieldsContainer.innerHTML = "<p class='modal-desc'>No specific low-confidence fields flagged. You may verify details and submit resolution.</p>";
     } else {
       lowConfFields.forEach(field => {
         const group = document.createElement("div");
         group.className = "modal-form-group";
+        const cleanLabel = field.replace("_", " ").toUpperCase();
+        const existingVal = parsed[field] || "";
         group.innerHTML = `
-          <label>Field: <strong>${field}</strong> (Low Confidence)</label>
-          <input type="text" class="corrected-field-input" data-field="${field}" placeholder="Enter corrected value...">
+          <label>Field: <strong>${cleanLabel}</strong> (Flagged for Review) *</label>
+          <input type="text" class="corrected-field-input" data-field="${field}" value="${existingVal}" placeholder="Enter verified ${field} value..." required>
         `;
         modalFieldsContainer.appendChild(group);
       });
