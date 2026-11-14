@@ -1,0 +1,71 @@
+version: "1.0"
+
+requirements:
+  ID_PROOF:
+    borrower_label: "Government-issued Photo ID (Passport, PAN, Voter ID, or Driving License)"
+    rule_type: "not_expired"
+
+  ADDRESS_PROOF:
+    borrower_label: "Recent utility bill or address proof issued within last 90 days"
+    rule_type: "max_age_days"
+    max_days: 90
+
+  SALARY_SLIPS_3M:
+    borrower_label: "Salary slips for the 3 calendar months prior to application"
+    rule_type: "prior_calendar_months"
+    months_count: 3
+
+  BANK_STMT_6M:
+    borrower_label: "Bank statements covering the 6 full calendar months prior to application"
+    rule_type: "continuous_coverage_months"
+    months_count: 6
+
+  ITR_2Y:
+    borrower_label: "Income Tax Return (ITR-V) acknowledgements for the 2 latest assessment years"
+    rule_type: "latest_assessment_years"
+    years_count: 2
+
+  BANK_STMT_12M:
+    borrower_label: "Bank statements covering the 12 full calendar months prior to application"
+    rule_type: "continuous_coverage_months"
+    months_count: 12
+
+  BUSINESS_PROOF:
+    borrower_label: "GST registration certificate or registered business proof"
+    rule_type: "document_exists"
+
+  PROPERTY_DOC:
+    borrower_label: "Registered property sale agreement or title deed"
+    rule_type: "document_exists"
+
+products:
+  personal_loan:
+    salaried:
+      - ID_PROOF
+      - ADDRESS_PROOF
+      - SALARY_SLIPS_3M
+      - BANK_STMT_6M
+
+    self_employed:
+      - ID_PROOF
+      - ADDRESS_PROOF
+      - ITR_2Y
+      - BANK_STMT_12M
+      - BUSINESS_PROOF
+
+  home_loan:
+    salaried:
+      - ID_PROOF
+      - ADDRESS_PROOF
+      - SALARY_SLIPS_3M
+      - BANK_STMT_6M
+      - PROPERTY_DOC
+
+    self_employed:
+      - ID_PROOF
+      - ADDRESS_PROOF
+      - ITR_2Y
+      - BANK_STMT_12M
+      - BUSINESS_PROOF
+      - PROPERTY_DOC
+
