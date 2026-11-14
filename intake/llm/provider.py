@@ -1,6 +1,7 @@
 """LLMProvider interface and deterministic FakeProvider with fault injection."""
 
 import json
+import random
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
@@ -28,8 +29,8 @@ class LLMProvider(ABC):
 class FakeProvider(LLMProvider):
     """Deterministic, offline provider that plans actions step-by-step without reading labels.jsonl."""
 
-    def __init__(self, fault_mode: Optional[str] = None):
-        """Initialize FakeProvider with optional fault injection mode.
+    def __init__(self, fault_mode: Optional[str] = None, fault_rate: float = 0.0, seed: int = 7):
+        """Initialize FakeProvider with optional fault injection mode or probabilistic fault rate.
         
         Supported fault modes:
         - 'unknown_tool': calls an unknown tool on first action, then recovers
@@ -39,10 +40,14 @@ class FakeProvider(LLMProvider):
         - 'wrong_final_decision': returns COMPLETE on an incomplete packet to test guardrail
         """
         self.fault_mode = fault_mode
+        self.fault_rate = fault_rate
+        self.seed = seed
+        self.rng = random.Random(seed)
         self.fault_injected = False
+        self.faults_this_packet = 0
         self.state: Dict[str, Any] = {}
 
-    def reset(self):
+    def reset(self, packet_seed: Optional[int] = None):
         """Reset internal provider state between packet executions."""
         self.state = {
             "listed": False,
@@ -56,6 +61,9 @@ class FakeProvider(LLMProvider):
             "completeness_res": None,
         }
         self.fault_injected = False
+        self.faults_this_packet = 0
+        if packet_seed is not None:
+            self.rng = random.Random(packet_seed)
 
     def next_action(self, messages: List[Dict[str, Any]], context: Dict[str, Any]) -> NextAction:
         """Deterministically plan the next tool call or produce final decision."""
@@ -68,7 +76,7 @@ class FakeProvider(LLMProvider):
         documents = packet.get("documents", [])
 
         # -------------------------------------------------------------
-        # Fault Injection Triggers
+        # Deterministic Fault Mode Injection
         # -------------------------------------------------------------
         if self.fault_mode and not self.fault_injected:
             if self.fault_mode == "unknown_tool":
@@ -81,7 +89,6 @@ class FakeProvider(LLMProvider):
                 )
             elif self.fault_mode == "invalid_args":
                 self.fault_injected = True
-                # classify_document requires 'doc_id' and 'text', or 'packet'; pass empty args
                 return NextAction(
                     is_tool_call=True,
                     tool_name="classify_document",
@@ -96,13 +103,40 @@ class FakeProvider(LLMProvider):
                 )
 
         if self.fault_mode == "infinite_loop":
-            # Continuously call list_documents so step budget is exceeded
             return NextAction(
                 is_tool_call=True,
                 tool_name="list_documents",
                 tool_args={"packet": packet},
                 raw_response=json.dumps({"tool": "list_documents", "args": {}})
             )
+
+        # -------------------------------------------------------------
+        # Probabilistic Fault Injection (--fault-rate)
+        # -------------------------------------------------------------
+        last_msg_is_error = bool(messages and messages[-1].get("role") in ("tool_error", "system"))
+        if self.fault_rate > 0.0 and not last_msg_is_error and self.faults_this_packet < 2:
+            if self.rng.random() < self.fault_rate:
+                self.faults_this_packet += 1
+                fault_choice = self.rng.choice(["unknown_tool", "invalid_args", "malformed_json"])
+                if fault_choice == "unknown_tool":
+                    return NextAction(
+                        is_tool_call=True,
+                        tool_name="unregistered_random_fault_tool",
+                        tool_args={"query": "fault_injection"},
+                        raw_response=json.dumps({"tool": "unregistered_random_fault_tool", "args": {}})
+                    )
+                elif fault_choice == "invalid_args":
+                    return NextAction(
+                        is_tool_call=True,
+                        tool_name="classify_document",
+                        tool_args={},
+                        raw_response=json.dumps({"tool": "classify_document", "args": {}})
+                    )
+                elif fault_choice == "malformed_json":
+                    return NextAction(
+                        is_tool_call=False,
+                        raw_response="### NOT_VALID_JSON {{{ broken json from fault injection"
+                    )
 
         # -------------------------------------------------------------
         # Normal Deterministic Planning Flow
