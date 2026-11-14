@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azentio · Loan Intake Agent Console</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo-badge">AZ</div>
+      <div>
+        <h1>Azentio Credit Operations</h1>
+        <p class="subtitle">Autonomous Loan Intake Agent & Guardrail Screener</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge badge-provider">Provider: FakeProvider (Deterministic)</span>
+      <span class="badge badge-status">Agent Online</span>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Left Column: Input Packet Console -->
+    <section class="card input-section">
+      <div class="card-header">
+        <h2>1. Loan Application Packet</h2>
+        <div class="preset-selector">
+          <select id="packetDropdown">
+            <option value="">-- Choose Generated Packet --</option>
+          </select>
+          <button id="loadPacketBtn" class="btn btn-secondary">Load</button>
+        </div>
+      </div>
+      <div class="editor-container">
+        <textarea id="packetJsonEditor" placeholder="Paste or select packet JSON here..."></textarea>
+      </div>
+      <div class="card-footer">
+        <button id="runAgentBtn" class="btn btn-primary">
+          <span>⚡ Run Intake Agent</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Right Column: Decision & Audit Trace Output -->
+    <section class="card output-section">
+      <div class="card-header">
+        <h2>2. Agent Intake Decision</h2>
+        <span id="decisionTimestamp" class="text-muted">Awaiting run...</span>
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <p>Select a packet on the left and click <strong>Run Intake Agent</strong> to inspect results.</p>
+      </div>
+
+      <div id="resultsContainer" class="results-container" style="display: none;">
+        <!-- Top Status Banner -->
+        <div id="decisionBanner" class="decision-banner">
+          <div>
+            <span class="decision-label">FINAL DECISION</span>
+            <h3 id="decisionTitle" class="decision-title">COMPLETE</h3>
+          </div>
+          <div class="banner-meta">
+            <span id="overrideBadge" class="badge badge-override" style="display: none;">Overridden by Guardrail</span>
+            <span id="latencyBadge" class="badge">0 ms</span>
+          </div>
+        </div>
+
+        <!-- Document Requests (if any) -->
+        <div id="docRequestsSection" class="result-block" style="display: none;">
+          <h4>Action Required: Missing / Deficient Documents</h4>
+          <ul id="requestsList" class="requests-list"></ul>
+        </div>
+
+        <!-- Low Confidence Warnings (if any) -->
+        <div id="lowConfSection" class="result-block warning-block" style="display: none;">
+          <h4>⚠️ Low Confidence Fields (< 0.8)</h4>
+          <p id="lowConfList" class="warning-text"></p>
+        </div>
+
+        <!-- Extracted Form Fields -->
+        <div class="result-block">
+          <h4>Normalized Form Fields</h4>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Extracted Value</th>
+              </tr>
+            </thead>
+            <tbody id="fieldsTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Step-by-Step Trace Timeline -->
+        <div class="result-block">
+          <div class="trace-header">
+            <h4>Execution Audit Trace</h4>
+            <span id="traceIdLabel" class="text-mono"></span>
+          </div>
+          <div id="traceTimeline" class="trace-timeline"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
