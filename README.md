@@ -71,59 +71,6 @@ flowchart TD
 
 ---
 
-## 2. Directory Structure
-
-```text
-azentio/
-├── config/
-│   └── checklist.yaml              # Bank credit policy rules & borrower labels
-├── data/
-│   ├── packets/                    # 40 synthetic loan application packets
-│   ├── labels.jsonl                # Ground truth labels (zero leakage to agent)
-│   ├── intake.db                   # SQLite database (review_items, audit_log, eval_runs)
-│   └── corrections.jsonl           # Append-only human reviewer ground truth corrections
-├── intake/
-│   ├── agent.py                    # Agent loop, 12-step budget, trace recorder, guardrail
-│   ├── checklist.py                # Pydantic credit checklist loader
-│   ├── eval.py                     # Evaluation suite, threshold sweep & error analysis CLI
-│   ├── generate.py                 # Synthetic packet generator CLI
-│   ├── messaging.py                # draft_borrower_request with borrower_labels validation
-│   ├── run.py                      # CLI packet runner
-│   ├── schemas.py                  # Pydantic domain models
-│   ├── generator/                  # Realistic synthetic data, OCR noise, and scenarios
-│   └── llm/
-│       ├── provider.py             # LLMProvider interface & FakeProvider with fault injection
-│       └── tools/                  # list_docs, classify_doc, extract_fields, check_completeness
-├── storage/                        # Dedicated database & regulatory audit package
-│   ├── database.py                 # SQLite connection manager & thread-safe migrations
-│   ├── models.py                   # Pydantic storage schemas
-│   ├── pii.py                      # Regex PII masking for PANs and bank accounts
-│   └── repository.py               # Review items, audit trail, 409 conflict, eval run persistence
-├── web/                            # Root FastAPI server & interactive multi-tab console
-│   ├── app.py                      # FastAPI application (/v1/packets/intake, /v1/review-items)
-│   ├── index.html                  # Multi-tab UI (Intake Console, Review Queue, Audit Trail)
-│   ├── routes/llm.py               # Route mounting UI at /llm and /
-│   └── static/                     # Dark-mode dashboard stylesheet and JavaScript app
-├── reports/
-│   ├── eval.json                   # Machine-readable evaluation report
-│   ├── eval.md                     # Markdown evaluation report with 3-packet error analysis
-│   └── baseline.json               # Committed regression performance thresholds
-├── tests/                          # 44 offline unit, regression, and API tests
-│   ├── test_agent.py               # Agent loop, budget cutoff, fault recovery, overrides
-│   ├── test_api.py                 # FastAPI endpoints, trace resolution, and 404/400 handling
-│   ├── test_check_completeness.py  # Credit rules, multi-file bank union, staleness, expiry
-│   ├── test_checklist.py           # YAML checklist validation
-│   ├── test_eval_regression.py     # Evaluation regression gate against baseline standards
-│   ├── test_generator.py           # Distribution quotas, reproducibility, zero leakage
-│   ├── test_storage_and_review.py  # SQLite resolve flow, 409 conflict, borrower validator, PII
-│   └── test_tools.py               # Typed tool execution and validation errors
-├── AI_USAGE.md                     # AI tools used, key prompts, errors caught & corrected
-├── pytest.ini                      # Pytest configuration with pythonpath = .
-├── requirements.txt                # Production dependencies
-└── .env.example                    # Environment variable configuration template
-```
-
----
 
 ## 3. Setup & Installation
 
