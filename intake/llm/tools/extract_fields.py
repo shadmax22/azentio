@@ -15,16 +15,19 @@ class FieldResult(BaseModel):
 
 class ExtractFieldsInput(BaseModel):
     """Input arguments for extract_fields tool."""
-    text: str
-    target: Literal["form", "document"]
+    text: Optional[str] = None
+    target: Literal["form", "document", "packet"] = "form"
     doc_type: Optional[str] = None
     doc_id: Optional[str] = None
+    packet: Optional[Dict[str, Any]] = None
+    documents: Optional[List[Dict[str, Any]]] = None
 
 
 class ExtractFieldsOutput(BaseModel):
     """Normalized extracted fields with confidence scores."""
     target: str
     fields: Dict[str, FieldResult] = Field(default_factory=dict)
+    documents: Dict[str, Dict[str, FieldResult]] = Field(default_factory=dict)
 
 
 # -------------------------------------------------------------------
@@ -269,14 +272,29 @@ def extract_document_fields(text: str, doc_type: Optional[str]) -> Dict[str, Fie
 
 
 def extract_fields(args: ExtractFieldsInput) -> ExtractFieldsOutput:
-    """Execute field extraction based on target ('form' or 'document')."""
-    if args.target == "form":
-        extracted = extract_form_fields(args.text)
-    else:
-        extracted = extract_document_fields(args.text, args.doc_type)
+    """Execute field extraction based on target ('form', 'document', or 'packet')."""
+    if args.target == "packet" or (args.packet is not None and not args.text):
+        pkt = args.packet or {}
+        form_text = pkt.get("application_form", "")
+        form_fields = extract_form_fields(form_text)
 
-    return ExtractFieldsOutput(
-        target=args.target,
-        fields=extracted
-    )
+        docs_dict = {}
+        for d in pkt.get("documents", []):
+            did = d.get("doc_id", "unknown")
+            d_text = d.get("text", "")
+            d_type = d.get("doc_type")
+            docs_dict[did] = extract_document_fields(d_text, d_type)
+
+        return ExtractFieldsOutput(
+            target="packet",
+            fields=form_fields,
+            documents=docs_dict
+        )
+
+    if args.target == "form":
+        extracted = extract_form_fields(args.text or "")
+        return ExtractFieldsOutput(target="form", fields=extracted)
+
+    extracted = extract_document_fields(args.text or "", args.doc_type)
+    return ExtractFieldsOutput(target="document", fields=extracted)
 
