@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from intake.schemas import Packet
 from intake.llm.provider import LLMProvider, FakeProvider, NextAction
 from intake.llm.tools.registry import execute_tool, TOOL_REGISTRY
+from intake.messaging import draft_borrower_request
+from storage.pii import mask_pii, mask_pii_text
 
 
 # -------------------------------------------------------------------
@@ -52,6 +54,7 @@ class AgentDecisionOutput(BaseModel):
     overridden: bool = False
     trace_id: str
     document_classifications: Dict[str, str] = Field(default_factory=dict)
+    borrower_message: Optional[str] = None
 
 
 # In-memory trace store for retrieving via GET /v1/traces/{trace_id}
@@ -142,8 +145,8 @@ def run_agent(
             trace.steps.append(TraceStep(
                 step_number=step_count,
                 tool=tool_name,
-                args=tool_args,
-                result_summary=summary,
+                args=mask_pii(tool_args),
+                result_summary=mask_pii_text(summary),
                 latency_ms=round(step_latency, 2)
             ))
 
@@ -160,10 +163,10 @@ def run_agent(
             trace.steps.append(TraceStep(
                 step_number=step_count,
                 tool=tool_name,
-                args=tool_args,
-                result_summary=f"Tool error: {error_msg}",
+                args=mask_pii(tool_args),
+                result_summary=mask_pii_text(f"Tool error: {error_msg}"),
                 latency_ms=round(step_latency, 2),
-                error=error_msg
+                error=mask_pii_text(error_msg)
             ))
             # Feed structured error back so model can recover
             messages.append({
@@ -235,7 +238,16 @@ def run_agent(
     # Flatten extracted form values
     flattened_fields = {k: v.get("value") for k, v in extracted_form_fields.items()}
 
-    return AgentDecisionOutput(
+    # Draft borrower message for REQUEST_DOCUMENTS
+    borrower_message = None
+    if guardrail_decision == "REQUEST_DOCUMENTS" and doc_requests:
+        applicant_name = flattened_fields.get("applicant_name") or "Valued Customer"
+        borrower_message = draft_borrower_request(
+            document_requests=doc_requests,
+            applicant_name=str(applicant_name),
+        )
+
+    output = AgentDecisionOutput(
         packet_id=packet_id,
         decision=guardrail_decision,
         document_requests=doc_requests,
@@ -243,5 +255,15 @@ def run_agent(
         low_confidence_fields=low_confidence_fields,
         overridden=overridden,
         trace_id=trace_id,
-        document_classifications=extracted_doc_classifications
+        document_classifications=extracted_doc_classifications,
+        borrower_message=borrower_message,
     )
+
+    # Automatically persist to storage/SQLite
+    try:
+        from storage import save_intake_result
+        save_intake_result(output=output, packet_data=packet)
+    except Exception:
+        pass
+
+    return output

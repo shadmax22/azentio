@@ -11,6 +11,16 @@ from fastapi.staticfiles import StaticFiles
 from intake.agent import run_agent, TRACE_STORE, AgentDecisionOutput, AgentTrace
 from intake.schemas import Packet
 from web.routes.llm import router as llm_router
+from storage import (
+    list_review_items,
+    get_review_item,
+    resolve_review_item,
+    get_audit_log,
+    AlreadyResolvedError,
+    ResolveRequest,
+    ReviewItem,
+    AuditLogEntry,
+)
 
 
 app = FastAPI(
@@ -63,6 +73,51 @@ def get_execution_trace(trace_id: str):
     
     trace_obj = TRACE_STORE[trace_id]
     return trace_obj.model_dump()
+
+
+# -------------------------------------------------------------------
+# Task 3: Human Review Queue & Regulatory Audit API Endpoints
+# -------------------------------------------------------------------
+
+@app.get("/v1/review-items", response_model=List[ReviewItem])
+def get_review_items(status: str = "open"):
+    """List review items filtered by status (default: open)."""
+    return list_review_items(status=status)
+
+
+@app.get("/v1/review-items/{item_id}", response_model=ReviewItem)
+def get_single_review_item(item_id: str):
+    """Retrieve details for a single review item."""
+    item = get_review_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"Review item '{item_id}' not found")
+    return item
+
+
+@app.post("/v1/review-items/{item_id}/resolve", response_model=ReviewItem)
+def resolve_item(item_id: str, request: ResolveRequest):
+    """Resolve an open review item. Returns 409 Conflict if already resolved."""
+    try:
+        updated_item = resolve_review_item(
+            item_id=item_id,
+            reviewer=request.reviewer,
+            decision=request.decision,
+            corrected_fields=request.corrected_fields,
+            notes=request.notes,
+        )
+        return updated_item
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except AlreadyResolvedError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to resolve review item: {str(e)}")
+
+
+@app.get("/v1/audit-log", response_model=List[AuditLogEntry])
+def get_audit_trail(packet_id: str = None, limit: int = 50):
+    """Retrieve immutable regulatory audit log history."""
+    return get_audit_log(packet_id=packet_id, limit=limit)
 
 
 # -------------------------------------------------------------------
