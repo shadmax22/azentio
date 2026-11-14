@@ -361,3 +361,4 @@ The repository follows a clean, auditable Git branching workflow:
 2. **Machine Learning Classifier**: Replace keyword document classification with a lightweight TF-IDF + Logistic Regression model trained on `data/packets` to classify noisy documents in $< 5\text{ms}$.
 3. **Server-Sent Events (SSE)**: Stream real-time agent trace steps to the web UI so operators can watch tool calls live.
 4. **Containerization**: Add a multi-stage `Dockerfile` and `docker-compose.yml` for single-command production deployment.
+
