@@ -93,10 +93,10 @@ Comparison of clean execution against a robustness run injecting faults on 20% o
 - **Document Requests Generated**: `[{'requirement_id': 'ID_PROOF', 'reason_code': 'EXPIRED'}]`
 - **Execution Steps**: 4 steps
 - **Root-Cause Trace Walkthrough**:
-  - Step 1: `list_documents` → Executed list_documents successfully. (0.01ms)
-  - Step 2: `classify_document` → Classified 7 documents. (0.22ms)
-  - Step 3: `extract_fields` → Extracted form fields: ['applicant_name', 'product', 'employment_type', 'loan_amount', 'tenure_months', 'application_date'] (0.3ms)
-  - Step 4: `check_completeness` → Check completeness: all_satisfied=False (1.0ms)
+  - Step 1: `list_documents` → Executed list_documents successfully. (0.02ms)
+  - Step 2: `classify_document` → Classified 7 documents. (0.23ms)
+  - Step 3: `extract_fields` → Extracted form fields: ['applicant_name', 'product', 'employment_type', 'loan_amount', 'tenure_months', 'application_date'] (0.35ms)
+  - Step 4: `check_completeness` → Check completeness: all_satisfied=False (1.08ms)
 - **Outcome**: The agent successfully detected unsatisfied checklist requirements (such as missing coverage window or expired date) and generated structured document requests with specific reason codes.
 
 ### Case Study 2: Ambiguous/Low-Confidence Routing (`pkt_002`)
@@ -105,9 +105,9 @@ Comparison of clean execution against a robustness run injecting faults on 20% o
 - **Execution Steps**: 4 steps
 - **Root-Cause Trace Walkthrough**:
   - Step 1: `list_documents` → Executed list_documents successfully. (0.02ms)
-  - Step 2: `classify_document` → Classified 7 documents. (0.24ms)
-  - Step 3: `extract_fields` → Extracted form fields: ['applicant_name', 'product', 'employment_type', 'loan_amount', 'tenure_months', 'application_date'] (0.34ms)
-  - Step 4: `check_completeness` → Check completeness: all_satisfied=True (1.03ms)
+  - Step 2: `classify_document` → Classified 7 documents. (0.25ms)
+  - Step 3: `extract_fields` → Extracted form fields: ['applicant_name', 'product', 'employment_type', 'loan_amount', 'tenure_months', 'application_date'] (0.37ms)
+  - Step 4: `check_completeness` → Check completeness: all_satisfied=True (1.07ms)
 - **Outcome**: OCR noise or missing handwritten fields resulted in confidence below the threshold or unreadable document tokens. The agent safely escalated the application to the human review queue with zero automated document requests.
 
 ### Case Study 3: Guardrail Safety Enforcement (`pkt_011`)
@@ -116,7 +116,7 @@ Comparison of clean execution against a robustness run injecting faults on 20% o
 - **Execution Steps**: 4 steps
 - **Root-Cause Trace Walkthrough**:
   - Step 1: `list_documents` → Executed list_documents successfully. (0.01ms)
-  - Step 2: `classify_document` → Classified 7 documents. (0.23ms)
+  - Step 2: `classify_document` → Classified 7 documents. (0.24ms)
   - Step 3: `extract_fields` → Extracted form fields: ['applicant_name', 'product', 'employment_type', 'loan_amount', 'tenure_months', 'application_date'] (0.35ms)
   - Step 4: `check_completeness` → Check completeness: all_satisfied=True (1.01ms)
 - **Outcome**: Even when the model layer produced an initial decision or encountered corrupted fields, the deterministic code guardrail verified policy compliance and enforced safety rules, guaranteeing zero false-complete leakage.

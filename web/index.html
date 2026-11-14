@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Azentio · Loan Intake Agent Console</title>
+  <title>Azentio · Loan Intake & Review Queue Console</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
       <div class="logo-badge">AZ</div>
       <div>
         <h1>Azentio Credit Operations</h1>
-        <p class="subtitle">Autonomous Loan Intake Agent & Guardrail Screener</p>
+        <p class="subtitle">Autonomous Loan Intake Agent, Review Queue & Audit Ledger</p>
       </div>
     </div>
     <div class="header-badges">
@@ -24,91 +24,226 @@
     </div>
   </header>
 
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs-bar">
+    <button class="nav-tab active" data-tab="intakeTab">
+      ⚡ Loan Intake Console
+    </button>
+    <button class="nav-tab" data-tab="reviewTab">
+      👥 Human Review Queue <span id="openReviewCountBadge" class="tab-badge">0</span>
+    </button>
+    <button class="nav-tab" data-tab="auditTab">
+      📋 Regulatory Audit Trail
+    </button>
+  </nav>
+
   <main class="main-container">
-    <!-- Left Column: Input Packet Console -->
-    <section class="card input-section">
-      <div class="card-header">
-        <h2>1. Loan Application Packet</h2>
-        <div class="preset-selector">
-          <select id="packetDropdown">
-            <option value="">-- Choose Generated Packet --</option>
-          </select>
-          <button id="loadPacketBtn" class="btn btn-secondary">Load</button>
-        </div>
-      </div>
-      <div class="editor-container">
-        <textarea id="packetJsonEditor" placeholder="Paste or select packet JSON here..."></textarea>
-      </div>
-      <div class="card-footer">
-        <button id="runAgentBtn" class="btn btn-primary">
-          <span>⚡ Run Intake Agent</span>
-        </button>
-      </div>
-    </section>
 
-    <!-- Right Column: Decision & Audit Trace Output -->
-    <section class="card output-section">
-      <div class="card-header">
-        <h2>2. Agent Intake Decision</h2>
-        <span id="decisionTimestamp" class="text-muted">Awaiting run...</span>
-      </div>
+    <!-- TAB 1: Intake Console -->
+    <div id="intakeTab" class="tab-pane active">
+      <div class="intake-grid">
+        <!-- Left Column: Input Packet Console -->
+        <section class="card input-section">
+          <div class="card-header">
+            <h2>1. Loan Application Packet</h2>
+            <div class="preset-selector">
+              <select id="packetDropdown">
+                <option value="">-- Choose Generated Packet --</option>
+              </select>
+              <button id="loadPacketBtn" class="btn btn-secondary">Load</button>
+            </div>
+          </div>
+          <div class="editor-container">
+            <textarea id="packetJsonEditor" placeholder="Paste or select packet JSON here..."></textarea>
+          </div>
+          <div class="card-footer">
+            <button id="runAgentBtn" class="btn btn-primary">
+              <span>⚡ Run Intake Agent</span>
+            </button>
+          </div>
+        </section>
 
-      <div id="emptyState" class="empty-state">
-        <p>Select a packet on the left and click <strong>Run Intake Agent</strong> to inspect results.</p>
-      </div>
+        <!-- Right Column: Decision & Audit Trace Output -->
+        <section class="card output-section">
+          <div class="card-header">
+            <h2>2. Agent Intake Decision</h2>
+            <span id="decisionTimestamp" class="text-muted">Awaiting run...</span>
+          </div>
 
-      <div id="resultsContainer" class="results-container" style="display: none;">
-        <!-- Top Status Banner -->
-        <div id="decisionBanner" class="decision-banner">
+          <div id="emptyState" class="empty-state">
+            <p>Select a packet on the left and click <strong>Run Intake Agent</strong> to inspect results.</p>
+          </div>
+
+          <div id="resultsContainer" class="results-container" style="display: none;">
+            <!-- Top Status Banner -->
+            <div id="decisionBanner" class="decision-banner">
+              <div>
+                <span class="decision-label">FINAL DECISION</span>
+                <h3 id="decisionTitle" class="decision-title">COMPLETE</h3>
+              </div>
+              <div class="banner-meta">
+                <span id="overrideBadge" class="badge badge-override" style="display: none;">Overridden by Guardrail</span>
+                <span id="latencyBadge" class="badge">0 ms</span>
+              </div>
+            </div>
+
+            <!-- Borrower Request Message (if REQUEST_DOCUMENTS) -->
+            <div id="borrowerMsgSection" class="result-block letter-block" style="display: none;">
+              <div class="section-title-row">
+                <h4>✉️ Generated Borrower Request Notice</h4>
+                <button id="copyBorrowerMsgBtn" class="btn btn-sm btn-secondary">Copy Notice</button>
+              </div>
+              <pre id="borrowerMsgText" class="letter-text"></pre>
+            </div>
+
+            <!-- Document Requests (if any) -->
+            <div id="docRequestsSection" class="result-block" style="display: none;">
+              <h4>Action Required: Missing / Deficient Documents</h4>
+              <ul id="requestsList" class="requests-list"></ul>
+            </div>
+
+            <!-- Low Confidence Warnings (if any) -->
+            <div id="lowConfSection" class="result-block warning-block" style="display: none;">
+              <h4>⚠️ Low Confidence Fields (&lt; 0.8)</h4>
+              <p id="lowConfList" class="warning-text"></p>
+            </div>
+
+            <!-- Extracted Form Fields -->
+            <div class="result-block">
+              <h4>Normalized Form Fields</h4>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Extracted Value</th>
+                  </tr>
+                </thead>
+                <tbody id="fieldsTableBody"></tbody>
+              </table>
+            </div>
+
+            <!-- Step-by-Step Trace Timeline -->
+            <div class="result-block">
+              <h4>Explainability Trace Timeline</h4>
+              <div id="traceTimeline" class="timeline"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- TAB 2: Human Review Queue -->
+    <div id="reviewTab" class="tab-pane" style="display: none;">
+      <section class="card full-width-card">
+        <div class="card-header">
           <div>
-            <span class="decision-label">FINAL DECISION</span>
-            <h3 id="decisionTitle" class="decision-title">COMPLETE</h3>
+            <h2>Human Review Queue (Regulated Operations)</h2>
+            <p class="subtitle">Applications routed due to OCR noise, illegibility, or low-confidence extraction</p>
           </div>
-          <div class="banner-meta">
-            <span id="overrideBadge" class="badge badge-override" style="display: none;">Overridden by Guardrail</span>
-            <span id="latencyBadge" class="badge">0 ms</span>
+          <div class="queue-actions">
+            <select id="reviewStatusFilter">
+              <option value="open">Status: Open</option>
+              <option value="resolved">Status: Resolved</option>
+              <option value="">Status: All</option>
+            </select>
+            <button id="refreshQueueBtn" class="btn btn-secondary">↻ Refresh Queue</button>
           </div>
         </div>
 
-        <!-- Document Requests (if any) -->
-        <div id="docRequestsSection" class="result-block" style="display: none;">
-          <h4>Action Required: Missing / Deficient Documents</h4>
-          <ul id="requestsList" class="requests-list"></ul>
+        <div id="queueEmptyState" class="empty-state" style="display: none;">
+          <p>🎉 No items currently pending in this queue.</p>
         </div>
 
-        <!-- Low Confidence Warnings (if any) -->
-        <div id="lowConfSection" class="result-block warning-block" style="display: none;">
-          <h4>⚠️ Low Confidence Fields (< 0.8)</h4>
-          <p id="lowConfList" class="warning-text"></p>
-        </div>
-
-        <!-- Extracted Form Fields -->
-        <div class="result-block">
-          <h4>Normalized Form Fields</h4>
-          <table class="data-table">
+        <div class="table-responsive">
+          <table class="data-table review-table">
             <thead>
               <tr>
-                <th>Field</th>
-                <th>Extracted Value</th>
+                <th>Review ID</th>
+                <th>Packet ID</th>
+                <th>Status</th>
+                <th>Low Confidence Fields</th>
+                <th>Created At</th>
+                <th>Action</th>
               </tr>
             </thead>
-            <tbody id="fieldsTableBody"></tbody>
+            <tbody id="reviewTableBody"></tbody>
           </table>
         </div>
+      </section>
+    </div>
 
-        <!-- Step-by-Step Trace Timeline -->
-        <div class="result-block">
-          <div class="trace-header">
-            <h4>Execution Audit Trace</h4>
-            <span id="traceIdLabel" class="text-mono"></span>
+    <!-- TAB 3: Regulatory Audit Trail -->
+    <div id="auditTab" class="tab-pane" style="display: none;">
+      <section class="card full-width-card">
+        <div class="card-header">
+          <div>
+            <h2>Immutable Regulatory Audit Trail</h2>
+            <p class="subtitle">Append-only ledger of all intake decisions, guardrail overrides, and reviewer resolutions</p>
           </div>
-          <div id="traceTimeline" class="trace-timeline"></div>
+          <button id="refreshAuditBtn" class="btn btn-secondary">↻ Refresh Audit Log</button>
         </div>
-      </div>
-    </section>
+
+        <div class="table-responsive">
+          <table class="data-table audit-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Timestamp</th>
+                <th>Actor</th>
+                <th>Packet ID</th>
+                <th>Decision</th>
+                <th>Reason Codes</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
   </main>
+
+  <!-- Resolution Modal -->
+  <div id="resolveModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Resolve Application: <span id="modalPacketId"></span></h3>
+        <button id="closeModalBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Review low-confidence fields and correct or confirm their values:</p>
+        <div id="modalFieldsContainer" class="modal-fields-form"></div>
+
+        <div class="modal-form-group">
+          <label>Reviewer Name / ID *</label>
+          <input type="text" id="reviewerNameInput" value="ops_officer_1" placeholder="e.g. ops_reviewer_42" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label>Final Decision Override</label>
+          <select id="reviewerDecisionSelect">
+            <option value="">Auto (Re-run Check Completeness)</option>
+            <option value="COMPLETE">COMPLETE</option>
+            <option value="REQUEST_DOCUMENTS">REQUEST_DOCUMENTS</option>
+            <option value="HUMAN_REVIEW">HUMAN_REVIEW</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label>Notes / Justification</label>
+          <textarea id="reviewerNotesInput" placeholder="Reasoning for field corrections..."></textarea>
+        </div>
+
+        <div id="modalErrorMsg" class="alert alert-danger" style="display: none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
+        <button id="submitResolveBtn" class="btn btn-primary">Submit Resolution</button>
+      </div>
+    </div>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>
 </html>
-

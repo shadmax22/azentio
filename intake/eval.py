@@ -587,6 +587,19 @@ def main():
         json.dump(baseline_data, f, indent=2)
     print(f"  -> Saved {baseline_path}")
 
+    # Persist evaluation run to storage/SQLite
+    try:
+        from storage import save_eval_run
+        save_eval_run(
+            eval_data=clean_eval,
+            sweep_results=sweep_results,
+            fault_run_data=fault_eval,
+            report_file=str(eval_md_path),
+        )
+        print(f"  -> Saved eval run metrics to SQLite database (eval_runs)")
+    except Exception as e:
+        print(f"  Warning: failed to save eval run to DB: {e}")
+
     print("\nEvaluation successfully completed.")
 
 
