@@ -39,6 +39,7 @@ class AgentTrace(BaseModel):
     guardrail_applied: bool = False
     guardrail_overridden: bool = False
     final_decision: Optional[str] = None
+    termination_reason: Optional[str] = None
 
 
 class AgentDecisionOutput(BaseModel):
@@ -214,6 +215,7 @@ def run_agent(
     # Save to Trace Store
     trace.total_latency_ms = round((time.perf_counter() - start_total_time) * 1000.0, 2)
     trace.final_decision = guardrail_decision
+    trace.termination_reason = termination_reason
     trace.guardrail_applied = True
     trace.guardrail_overridden = overridden
     TRACE_STORE[trace_id] = trace

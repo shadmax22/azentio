@@ -92,7 +92,7 @@ def test_fault_injection_malformed_json_retries():
 
 
 def test_step_budget_exceeded_ends_in_human_review():
-    """Verify a model that never finishes terminates in HUMAN_REVIEW with step budget."""
+    """Verify a model that never finishes terminates in HUMAN_REVIEW with STEP_BUDGET_EXCEEDED."""
     packet = _get_sample_complete_packet()
     provider = FakeProvider(fault_mode="infinite_loop")
     output = run_agent(packet, provider=provider, step_budget=12)
@@ -100,6 +100,7 @@ def test_step_budget_exceeded_ends_in_human_review():
     assert output.decision == "HUMAN_REVIEW"
     trace = TRACE_STORE[output.trace_id]
     assert len(trace.steps) == 12
+    assert trace.termination_reason == "STEP_BUDGET_EXCEEDED"
 
 
 def test_guardrail_overrides_wrong_model_decision():
