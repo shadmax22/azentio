@@ -5,10 +5,20 @@ from pathlib import Path
 import pytest
 
 from intake.eval import evaluate_dataset, run_threshold_sweep
+from intake.generate import generate_dataset
 
 
 DATA_DIR = Path("data")
 BASELINE_PATH = Path("reports/baseline.json")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_dataset():
+    """Ensure synthetic packets and labels exist before running evaluation regression tests."""
+    labels_file = DATA_DIR / "labels.jsonl"
+    packets_dir = DATA_DIR / "packets"
+    if not labels_file.exists() or not packets_dir.exists() or not any(packets_dir.glob("*.json")):
+        generate_dataset(packets=40, seed=7, out_dir=DATA_DIR)
 
 
 @pytest.fixture(scope="module")
